@@ -1,0 +1,1942 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Gestão Comercial - Login & Sistema</title>
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <!-- Biblioteca Chart.js para os gráficos gerenciais -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Biblioteca Html5-Qrcode para leitura de código de barras via câmera -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-color: #1f2937;
+            --border-color: #e5e7eb;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Loading Overlay */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+            color: white;
+        }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Estilos da Tela de Login */
+        .login-card {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+            text-align: center;
+            margin: auto;
+        }
+
+        .login-card h2 {
+            margin-bottom: 24px;
+            color: #1e293b;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .btn-login {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-login:hover {
+            background-color: #1d4ed8;
+        }
+
+        /* Contêiner Principal do Sistema (Oculto até logar) */
+        .app-conteudo {
+            display: none;
+            width: 100%;
+        }
+
+        #telaBloqueio {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            height: 90vh;
+        }
+
+        .lock-card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .config-bar {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .config-left {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 15px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: #6b7280;
+            border-radius: 6px;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: var(--text-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #4b5563;
+        }
+
+        button.btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        button.btn:hover {
+            opacity: 0.9;
+        }
+
+        button.btn-danger {
+            background-color: var(--danger);
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        button.btn-secondary {
+            background-color: #4b5563;
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            color: white;
+        }
+
+        button.btn-success {
+            background-color: var(--success);
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            color: white;
+        }
+
+        button.btn-warning {
+            background-color: var(--warning);
+            color: white;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #f9fafb;
+            font-weight: 600;
+        }
+
+        /* Controles de Paginação */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #4b5563;
+        }
+        .pagination-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .pagination-buttons button {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge-gerente { background-color: #dbeafe; color: #1e40af; }
+        .badge-operador { background-color: #dcfce7; color: #166534; }
+        .badge-ok { background-color: #d1fae5; color: #065f46; }
+        .badge-alert { background-color: #fee2e2; color: #991b1b; }
+        .badge-in { background-color: #d1fae5; color: #065f46; }
+        .badge-out { background-color: #fee2e2; color: #991b1b; }
+        .badge-warn { background-color: #fef3c7; color: #92400e; }
+
+        .summary-container {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .summary-box {
+            font-size: 1rem;
+            font-weight: bold;
+            padding: 12px 15px;
+            background: #eef2ff;
+            border-radius: 6px;
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .pdv-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media(max-width: 768px) {
+            .pdv-layout { grid-template-columns: 1fr; }
+        }
+        .pdv-total-box {
+            background: #eef2ff;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: right;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-top: 15px;
+        }
+        .shortcut-helper {
+            font-size: 0.75rem;
+            color: #6b7280;
+            background: #e5e7eb;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-left: 5px;
+        }
+        .user-badge-role {
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY DE LOADING -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Processando requisição...</p>
+    </div>
+
+    <!-- TELA DE LOGIN -->
+    <div id="telaLogin" class="login-card">
+        <h2>Login do Sistema</h2>
+        <form onsubmit="fazerLogin(event)">
+            <div class="form-group">
+                <label>Usuário</label>
+                <input type="text" id="usuario" required placeholder="Ex: gerente ou operador">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="senha" required placeholder="Sua senha">
+            </div>
+            <button type="submit" class="btn-login">Entrar</button>
+        </form>
+    </div>
+
+    <!-- TELA DE BLOQUEIO DE CLIENTE -->
+    <div id="telaBloqueio" class="container" style="display: none;">
+        <div class="lock-card">
+            <h2 style="color: var(--danger);">⚠️ Acesso Suspenso</h2>
+            <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 20px;">O período de teste expirou ou o acesso foi temporariamente suspenso. Entre em contato com o administrador.</p>
+            <button class="btn btn-secondary" onclick="abrirModalAdmin()" style="width: 100%;">Sou o Administrador</button>
+        </div>
+    </div>
+
+    <!-- CONTEÚDO PRINCIPAL DO SISTEMA -->
+    <div id="appConteudo" class="app-conteudo container">
+        <header>
+            <div class="header-app" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 15px;">
+                <div>
+                    <h1 id="tituloLoja" style="margin: 0; text-align: left;">Painel de Gestão Comercial</h1>
+                    <p style="text-align: left; font-size: 0.9rem; color: #6b7280;">Sistema Completo com Caixa Turno, CRM, Impressão Térmica e Leitor por Câmera</p>
+                </div>
+                <div style="text-align: right;">
+                    <span id="labelUsuarioLogado" class="user-badge-role badge-operador">Operador</span>
+                    <span id="nomeUsuario" style="font-weight: 600; margin-left: 5px; font-size: 0.9rem;"></span>
+                    <button class="btn btn-danger btn-sair" onclick="fazerLogout()" style="margin-left: 10px;">Sair</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="config-bar">
+            <div class="config-left">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Nome do Comércio:</label>
+                    <input type="text" id="configNome" placeholder="Ex: Minha Loja" oninput="atualizarConfig()">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Cor Principal:</label>
+                    <input type="color" id="configCor" value="#4f46e5" oninput="atualizarConfig()" style="height: 41px; padding: 2px;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                <button class="btn btn-warning" onclick="abrirModalTurno()" id="btnStatusTurno">📦 Caixa: Fechado</button>
+                <button class="btn btn-success" onclick="salvarTudoNoArquivo()" title="Salvar todas as alterações atuais">💾 Salvar Alterações</button>
+                <button class="btn btn-secondary" onclick="exportarBackup()" title="Baixar cópia de segurança">📥 Backup</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('inputBackup').click()" title="Restaurar dados">📂 Restaurar</button>
+                <input type="file" id="inputBackup" style="display: none;" accept=".json" onchange="importarBackup(event)">
+                <button class="btn btn-secondary" onclick="abrirModalAdmin()">⚙️ ADM</button>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(event, 'pdv')">🛒 PDV <span class="shortcut-helper">F2</span></button>
+            <button class="tab-btn" onclick="switchTab(event, 'estoque')" id="tabBtnEstoque">📦 Estoque</button>
+            <button class="tab-btn" onclick="switchTab(event, 'caixa')" id="tabBtnCaixa">💰 Caixa & Contas</button>
+            <button class="tab-btn" onclick="switchTab(event, 'clientes')">👥 Clientes (CRM)</button>
+            <button class="tab-btn" onclick="switchTab(event, 'fiado')">🤝 Fiado</button>
+            <button class="tab-btn" onclick="switchTab(event, 'dashboard')" id="tabBtnDashboard">📊 Relatórios</button>
+            <button class="tab-btn" onclick="switchTab(event, 'posts')">📱 Posts</button>
+        </div>
+
+        <div id="pdv" class="tab-content active">
+            <div class="pdv-layout">
+                <div class="card" style="margin-bottom:0;">
+                    <h2>
+                        <span>Registrar Venda (Frente de Caixa)</span>
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="abrirModalCameraScanner()">📷 Ler Câmera</button>
+                    </h2>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label>📷 Código de Barras (Escaneie ou Digite / <span style="color:var(--primary)">Pressione F2</span>)</label>
+                        <input type="text" id="pdvCodigoBarraInput" placeholder="Escaneie o código aqui..." autofocus onkeypress="checarLeitorCodigoBarras(event)">
+                    </div>
+
+                    <form id="formPdv" onsubmit="addItemCarrinho(event)">
+                        <div class="form-group">
+                            <label>Selecionar Produto</label>
+                            <select id="pdvProduto" required onchange="atualizarPrecoPdv()">
+                                <option value="">-- Escolha um produto --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantidade</label>
+                            <input type="number" id="pdvQtd" min="1" value="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Preço Unitário (R$)</label>
+                            <input type="number" step="0.01" id="pdvPreco" required placeholder="0.00">
+                        </div>
+                        <button type="submit" class="btn" style="grid-column: 1 / -1;">Adicionar ao Carrinho</button>
+                    </form>
+                </div>
+
+                <div class="card" style="margin-bottom:0; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h2>Carrinho de Compras Atual</h2>
+                        <div class="table-responsive" style="max-height: 160px; overflow-y: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Qtd</th>
+                                        <th>Subtotal</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabelaCarrinho">
+                                    <tr><td colspan="4" style="text-align: center; color: #6b7280;">Carrinho vazio</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="pdv-total-box" id="pdvTotalGeral">Total: R$ 0,00</div>
+                        
+                        <div class="form-group" style="margin-top: 8px;">
+                            <label>Forma de Pagamento</label>
+                            <select id="pdvFormaPagamento">
+                                <option value="Dinheiro">Dinheiro</option>
+                                <option value="Pix">Pix</option>
+                                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                <option value="Cartão de Débito">Cartão de Débito</option>
+                                <option value="Fiado">Fiado (Registrar Crediário)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="grupoNomeClienteFiado" style="display: none; margin-top: 8px;">
+                            <label>Nome do Cliente (Para Fiado)</label>
+                            <input type="text" id="pdvNomeCliente" placeholder="Nome do cliente">
+                        </div>
+
+                        <div class="form-group" id="grupoWhatsRecibo" style="margin-top: 8px;">
+                            <label>WhatsApp do Cliente (Opcional p/ Recibo)</label>
+                            <input type="text" id="pdvTelCliente" placeholder="Ex: 5511999999999">
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 12px;">
+                            <button class="btn btn-success" style="flex: 2; padding: 12px; font-size: 1.05rem;" onclick="finalizarVendaPdv()">Finalizar Venda <span class="shortcut-helper">F4</span></button>
+                            <button class="btn btn-secondary" style="flex: 1;" onclick="limparCarrinho()" title="Limpar carrinho">Limpar <span class="shortcut-helper">ESC</span></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="estoque" class="tab-content">
+            <div class="card" id="cardEstoqueForm">
+                <h2>
+                    <span>Adicionar Novo Produto / Código de Barras</span>
+                    <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="abrirModalCameraScannerEstoque()">📷 Ler Câmera</button>
+                </h2>
+                <form id="formEstoque" onsubmit="addEstoque(event)">
+                    <div class="form-group">
+                        <label>Código de Barras</label>
+                        <input type="text" id="estCodBarra" placeholder="Ex: 7891020304050">
+                    </div>
+                    <div class="form-group">
+                        <label>Nome do Produto</label>
+                        <input type="text" id="estNome" required placeholder="Ex: Camiseta Básica">
+                    </div>
+                    <div class="form-group">
+                        <label>Preço Custo (R$)</label>
+                        <input type="number" step="0.01" min="0" id="estCusto" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Preço Venda (R$)</label>
+                        <input type="number" step="0.01" min="0" id="estVenda" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Qtd Atual</label>
+                        <input type="number" min="0" id="estQtd" required placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Qtd Mínima</label>
+                        <input type="number" min="0" id="estMin" required placeholder="0">
+                    </div>
+                    <button type="submit" class="btn">Cadastrar Produto</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>
+                    <span>Lista de Produtos</span>
+                    <button class="btn btn-secondary" onclick="exportarCSV('estoque')">Exportar Planilha (CSV)</button>
+                </h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cód. Barras</th>
+                                <th>Produto</th>
+                                <th>Custo</th>
+                                <th>Venda</th>
+                                <th>Estoque Atual</th>
+                                <th>Mínimo</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaEstoque"></tbody>
+                    </table>
+                </div>
+                <div class="pagination-container" id="paginacaoEstoque"></div>
+            </div>
+        </div>
+
+        <div id="caixa" class="tab-content">
+            <div class="card">
+                <h2>Registrar Movimentação Manual (Entrada / Saída)</h2>
+                <form id="formCaixa" onsubmit="addCaixa(event)">
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="cxData" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <input type="text" id="cxDesc" required placeholder="Ex: Retirada de Caixa / Venda externa">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select id="cxTipo">
+                            <option value="Entrada">Entrada</option>
+                            <option value="Saída">Saída</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Total (R$)</label>
+                        <input type="number" step="0.01" min="0.01" id="cxValor" required placeholder="0.00">
+                    </div>
+                    <button type="submit" class="btn">Registrar no Caixa</button>
+                </form>
+            </div>
+
+            <div class="card" style="border-left: 4px solid var(--warning);">
+                <h2>Controle de Contas a Pagar (Aluguel, Fornecedores, Luz)</h2>
+                <form id="formContas" onsubmit="addContaPagar(event)" style="margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label>Descrição da Conta</label>
+                        <input type="text" id="contaDesc" required placeholder="Ex: Fornecedor Tecidos">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor (R$)</label>
+                        <input type="number" step="0.01" min="0.01" id="contaValor" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Data de Vencimento</label>
+                        <input type="date" id="contaVenc" required>
+                    </div>
+                    <button type="submit" class="btn btn-warning">Adicionar Conta a Pagar</button>
+                </form>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Vencimento</th>
+                                <th>Descrição</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaContas"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <span>Histórico de Caixa</span>
+                        <select id="filtroCaixaPeriodo" onchange="renderCaixa()" style="padding: 5px; font-size: 0.85rem;">
+                            <option value="todos">Todos os Registros</option>
+                            <option value="hoje">Apenas Hoje</option>
+                            <option value="7dias">Últimos 7 Dias</option>
+                            <option value="mes">Este Mês</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary" onclick="exportarCSV('caixa')">Exportar Planilha (CSV)</button>
+                </h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Tipo</th>
+                                <th>Valor</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaCaixa"></tbody>
+                    </table>
+                </div>
+                <div class="pagination-container" id="paginacaoCaixa"></div>
+                <div class="summary-container">
+                    <div class="summary-box" id="resumoEntradas">Total Entradas: R$ 0,00</div>
+                    <div class="summary-box" id="resumoSaidas">Total Saídas: R$ 0,00</div>
+                    <div class="summary-box" id="saldoCaixa" style="background: #d1fae5; color: #065f46;">Saldo Atual: R$ 0,00</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="clientes" class="tab-content">
+            <div class="card">
+                <h2>Cadastrar Novo Cliente</h2>
+                <form id="formCliente" onsubmit="addCliente(event)">
+                    <div class="form-group">
+                        <label>Nome Completo</label>
+                        <input type="text" id="cliNome" required placeholder="Ex: Maria Souza">
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp / Telefone</label>
+                        <input type="text" id="cliTel" placeholder="(00) 00000-0000">
+                    </div>
+                    <div class="form-group">
+                        <label>Endereço</label>
+                        <input type="text" id="cliEnd" placeholder="Rua, Número, Bairro">
+                    </div>
+                    <div class="form-group">
+                        <label>Data de Aniversário</label>
+                        <input type="date" id="cliAniversario">
+                    </div>
+                    <button type="submit" class="btn">Cadastrar Cliente</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Base de Clientes (CRM)</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Contato</th>
+                                <th>Endereço</th>
+                                <th>Aniversário</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaClientes"></tbody>
+                    </table>
+                </div>
+                <div class="pagination-container" id="paginacaoClientes"></div>
+            </div>
+        </div>
+
+        <div id="fiado" class="tab-content">
+            <div class="card">
+                <h2>Anotar Nova Dívida (Fiado)</h2>
+                <form id="formFiado" onsubmit="addFiado(event)">
+                    <div class="form-group">
+                        <label>Nome do Cliente</label>
+                        <input type="text" id="fiadoCliente" required placeholder="Ex: João da Silva">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone / WhatsApp</label>
+                        <input type="text" id="fiadoTel" placeholder="(00) 00000-0000">
+                    </div>
+                    <div class="form-group">
+                        <label>O que comprou / Descrição</label>
+                        <input type="text" id="fiadoDesc" required placeholder="Ex: 2 Bermudas e 1 Camisa">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor da Dívida (R$)</label>
+                        <input type="number" step="0.01" min="0.01" id="fiadoValor" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="fiadoData" required>
+                    </div>
+                    <button type="submit" class="btn">Registrar Fiado</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Controle de Clientes Devendo</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Contato</th>
+                                <th>Descrição</th>
+                                <th>Valor Devido</th>
+                                <th>Data</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaFiado"></tbody>
+                    </table>
+                </div>
+                <div class="pagination-container" id="paginacaoFiado"></div>
+                <div class="summary-container">
+                    <div class="summary-box" id="totalFiado" style="background: #fee2e2; color: #991b1b;">Total a Receber (Fiado): R$ 0,00</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="dashboard" class="tab-content">
+            <div class="card" id="cardRelatorios">
+                <h2>Relatório Gráfico de Faturamento (Últimos 7 Dias)</h2>
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="graficoFaturamento"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="posts" class="tab-content">
+            <div class="card">
+                <h2>Agendar Postagem</h2>
+                <form id="formPost" onsubmit="addPost(event)">
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="postData" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Rede Social</label>
+                        <select id="postRede">
+                            <option value="Instagram Feed">Instagram Feed</option>
+                            <option value="Instagram Stories">Instagram Stories</option>
+                            <option value="Instagram Reels">Instagram Reels</option>
+                            <option value="WhatsApp Status">WhatsApp Status</option>
+                            <option value="TikTok">TikTok</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tema / Ideia</label>
+                        <input type="text" id="postTema" required placeholder="Ex: Bastidores da loja">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="postStatus">
+                            <option value="Rascunho">Rascunho</option>
+                            <option value="Agendado">Agendado</option>
+                            <option value="Publicado">Publicado</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn">Adicionar Post</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Calendário de Conteúdo</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Rede Social</th>
+                                <th>Tema</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaPosts"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais do Sistema -->
+    <div id="modalTurno" class="modal-overlay">
+        <div class="modal-card">
+            <h3 style="margin-bottom: 15px; color: var(--primary);" id="tituloModalTurno">Gerenciamento de Caixa / Turno</h3>
+            <div id="conteudoModalTurno"></div>
+        </div>
+    </div>
+
+    <div id="modalRecibo" class="modal-overlay">
+        <div class="modal-card">
+            <h3 style="margin-bottom: 15px; color: var(--primary);">🧾 Recibo da Venda</h3>
+            <div id="conteudoRecibo" style="background: #f9fafb; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 0.9rem; white-space: pre-line; margin-bottom: 15px;"></div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-success" style="flex: 1;" onclick="enviarWhatsAppRecibo()">📲 WhatsApp</button>
+                <button class="btn btn-warning" style="flex: 1; color: white;" onclick="imprimirReciboTermico()">🖨️ Impressora Térmica</button>
+                <button class="btn btn-secondary" style="flex: 1;" onclick="fecharModalRecibo()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalCameraScanner" class="modal-overlay">
+        <div class="modal-card" style="text-align: center;">
+            <h3 style="margin-bottom: 15px; color: var(--primary);">📷 Leitor de Código de Barras</h3>
+            <div id="reader" style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px;"></div>
+            <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 15px;" id="statusCameraMsg">Aponte a câmera para o código de barras do produto.</p>
+            <button class="btn btn-secondary" style="width: 100%;" onclick="fecharModalCameraScanner()">Fechar Câmera</button>
+        </div>
+    </div>
+
+    <div id="modalAdmin" class="modal-overlay">
+        <div class="modal-card">
+            <h3 style="margin-bottom: 15px; color: var(--primary);">Painel de Controle ADM</h3>
+            <div id="formLoginAdmin">
+                <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 10px;">Digite sua senha de desenvolvedor:</p>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <input type="password" id="senhaAdmin" placeholder="Senha ADM">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn" style="flex: 1;" onclick="autenticarAdmin()">Entrar</button>
+                    <button class="btn btn-secondary" onclick="fecharModalAdmin()">Cancelar</button>
+                </div>
+            </div>
+            <div id="painelControleAdmin" style="display: none;">
+                <p style="font-size: 0.9rem; margin-bottom: 15px;">Gerenciar acesso deste cliente:</p>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn" style="flex: 1; background: var(--success);" onclick="mudarStatusSistema('ativo')">Liberar Acesso</button>
+                    <button class="btn btn-danger" style="flex: 1;" onclick="mudarStatusSistema('bloqueado')">Bloquear Acesso</button>
+                </div>
+                <button class="btn btn-secondary" style="width: 100%;" onclick="fecharModalAdmin()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONTROLE DE LOADING GLOBAL
+        function mostrarLoading(ativo) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.style.display = ativo ? 'flex' : 'none';
+        }
+
+        // CONFIGURAÇÃO DO FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyADkg1LbjAOa2S4zqPO1bAfstz0OkBD0tI",
+            authDomain: "sistema-loja-70613.firebaseapp.com",
+            projectId: "sistema-loja-70613",
+            storageBucket: "sistema-loja-70613.firebasestorage.app",
+            messagingSenderId: "57288020778",
+            appId: "1:57288020778:web:54978119d9677ad50d0453",
+            measurementId: "G-FX8D3HQX5Y"
+        };
+
+        // Inicializa o Firebase[cite: 1]
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const SENHA_ADM = "123456";
+        let meuGraficoFaturamento = null;
+        let html5QrCode = null;
+        let modoScannerDestino = 'pdv';
+
+        // CONTROLE DE PAGINAÇÃO (ESTADO POR TELA)
+        let paginaAtualEstoque = 1;
+        const itensPorPagina = 5;
+
+        let paginaAtualCaixa = 1;
+        let paginaAtualClientes = 1;
+        let paginaAtualFiado = 1;
+
+        // LÓGICA DE LOGIN COM FIREBASE (VALIDAÇÃO DUPLA + LOADING)
+        async function fazerLogin(event) {
+            event.preventDefault();
+            const usuarioDigitado = document.getElementById('usuario').value.trim();
+            const senhaDigitada = document.getElementById('senha').value.trim();
+
+            // Validação dupla no Frontend
+            if (!usuarioDigitado || !senhaDigitada) {
+                alert('Preencha todos os campos de login.');
+                return;
+            }
+
+            mostrarLoading(true);
+            try {
+                const snapshot = await db.collection('usuarios')
+                    .where('usuario', '==', usuarioDigitado)
+                    .get();
+
+                if (snapshot.empty) {
+                    mostrarLoading(false);
+                    alert('Usuário não encontrado!');
+                    return;
+                }
+
+                let usuarioEncontrado = null;
+                snapshot.forEach(doc => {
+                    usuarioEncontrado = doc.data();
+                });
+
+                // Validação backend / integridade de senha
+                if (usuarioEncontrado.senha !== senhaDigitada) {
+                    mostrarLoading(false);
+                    alert('Senha incorreta!');
+                    return;
+                }
+
+                sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado));
+                carregarPainel(usuarioEncontrado);
+
+            } catch (error) {
+                console.error("Erro ao fazer login:", error);
+                alert('Erro ao conectar ao banco de dados. Verifique a internet.');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        let usuarioAtualObjeto = null;
+
+        function carregarPainel(user) {
+            usuarioAtualObjeto = user;
+            document.getElementById('telaLogin').style.display = 'none';
+            checarStatusAcesso();
+
+            document.getElementById('nomeUsuario').innerText = `(${user.nome})`;
+            const badge = document.getElementById('labelUsuarioLogado');
+            badge.innerText = user.cargo.toUpperCase();
+
+            const tabEstoque = document.getElementById('tabBtnEstoque');
+            const tabCaixa = document.getElementById('tabBtnCaixa');
+            const tabDash = document.getElementById('tabBtnDashboard');
+
+            if (user.cargo === 'gerente') {
+                badge.className = 'user-badge-role badge-gerente';
+                if(tabEstoque) tabEstoque.style.display = 'block';
+                if(tabCaixa) tabCaixa.style.display = 'block';
+                if(tabDash) tabDash.style.display = 'block';
+            } else {
+                badge.className = 'user-badge-role badge-operador';
+                if(tabEstoque) tabEstoque.style.display = 'block';
+                if(document.getElementById('cardEstoqueForm')) document.getElementById('cardEstoqueForm').style.display = 'none';
+                if(tabCaixa) tabCaixa.style.display = 'none';
+                if(tabDash) tabDash.style.display = 'none';
+            }
+
+            inicializarSistemaCompleto();
+        }
+
+        function fazerLogout() {
+            sessionStorage.clear();
+            window.location.reload();
+        }
+
+        window.onload = function() {
+            const salvo = sessionStorage.getItem('usuarioLogado');
+            if (salvo) {
+                carregarPainel(JSON.parse(salvo));
+            }
+        }
+
+        function checarStatusAcesso() {
+            const status = localStorage.getItem('statusSistemaCliente') || 'ativo';
+            if (status === 'bloqueado') {
+                document.getElementById('appConteudo').style.display = 'none';
+                document.getElementById('telaBloqueio').style.display = 'flex';
+            } else {
+                document.getElementById('telaBloqueio').style.display = 'none';
+                document.getElementById('appConteudo').style.display = 'block';
+            }
+        }
+
+        function abrirModalAdmin() {
+            document.getElementById('modalAdmin').style.display = 'flex';
+            document.getElementById('formLoginAdmin').style.display = 'block';
+            document.getElementById('painelControleAdmin').style.display = 'none';
+            document.getElementById('senhaAdmin').value = '';
+        }
+
+        function fecharModalAdmin() {
+            document.getElementById('modalAdmin').style.display = 'none';
+        }
+
+        function autenticarAdmin() {
+            const senhaDigitada = document.getElementById('senhaAdmin').value;
+            if (senhaDigitada === SENHA_ADM) {
+                document.getElementById('formLoginAdmin').style.display = 'none';
+                document.getElementById('painelControleAdmin').style.display = 'block';
+            } else {
+                alert('Senha de Administrador incorreta!');
+            }
+        }
+
+        function mudarStatusSistema(novoStatus) {
+            localStorage.setItem('statusSistemaCliente', novoStatus);
+            fecharModalAdmin();
+            checarStatusAcesso();
+            alert(novoStatus === 'bloqueado' ? 'Sistema bloqueado.' : 'Sistema liberado!');
+        }
+
+        // FUNÇÕES DO SISTEMA COMERCIAL COMPLETO
+        function inicializarSistemaCompleto() {
+            carregarConfig();
+            atualizarBotaoTurno();
+            
+            const hojeStr = new Date().toISOString().split('T')[0];
+            if(document.getElementById('cxData')) document.getElementById('cxData').value = hojeStr;
+            if(document.getElementById('fiadoData')) document.getElementById('fiadoData').value = hojeStr;
+            if(document.getElementById('cliAniversario')) document.getElementById('cliAniversario').value = hojeStr;
+            if(document.getElementById('postData')) document.getElementById('postData').value = hojeStr;
+            if(document.getElementById('contaVenc')) document.getElementById('contaVenc').value = hojeStr;
+
+            renderEstoque();
+            atualizarSelectProdutosPdv();
+            renderCaixa();
+            renderContas();
+            renderClientes();
+            renderFiado();
+            renderPosts();
+            atualizarGraficoDashboard();
+        }
+
+        let config = JSON.parse(localStorage.getItem('configLoja')) || { nome: 'Painel de Gestão Comercial', cor: '#4f46e5' };
+        
+        function carregarConfig() {
+            document.getElementById('tituloLoja').innerText = config.nome;
+            document.getElementById('configNome').value = config.nome !== 'Painel de Gestão Comercial' ? config.nome : '';
+            document.getElementById('configCor').value = config.cor;
+            aplicarCorTema(config.cor);
+        }
+
+        function atualizarConfig() {
+            const nomeInput = document.getElementById('configNome').value;
+            const corInput = document.getElementById('configCor').value;
+            config.nome = nomeInput.trim() !== '' ? nomeInput : 'Painel de Gestão Comercial';
+            config.cor = corInput;
+            document.getElementById('tituloLoja').innerText = config.nome;
+            aplicarCorTema(config.cor);
+            localStorage.setItem('configLoja', JSON.stringify(config));
+        }
+
+        function aplicarCorTema(corHex) {
+            document.documentElement.style.setProperty('--primary', corHex);
+            document.documentElement.style.setProperty('--primary-hover', corHex); 
+        }
+
+        function switchTab(evt, tabName) {
+            if (usuarioAtualObjeto && usuarioAtualObjeto.cargo === 'operador' && (tabName === 'caixa' || tabName === 'dashboard')) {
+                alert('Acesso restrito apenas para Gerentes!');
+                return;
+            }
+
+            let contents = document.getElementsByClassName("tab-content");
+            for (let c of contents) c.classList.remove("active");
+
+            let buttons = document.getElementsByClassName("tab-btn");
+            for (let b of buttons) b.classList.remove("active");
+
+            document.getElementById(tabName).classList.add("active");
+            if(evt && evt.currentTarget) evt.currentTarget.classList.add("active");
+
+            if (tabName === 'dashboard') {
+                atualizarGraficoDashboard();
+            }
+        }
+
+        // Leitor de Código de Barras por Câmera
+        function abrirModalCameraScanner() {
+            modoScannerDestino = 'pdv';
+            document.getElementById('modalCameraScanner').style.display = 'flex';
+            iniciarCameraScanner();
+        }
+
+        function abrirModalCameraScannerEstoque() {
+            modoScannerDestino = 'estoque';
+            document.getElementById('modalCameraScanner').style.display = 'flex';
+            iniciarCameraScanner();
+        }
+
+        function iniciarCameraScanner() {
+            const qrConfig = { fps: 10, qrbox: { width: 250, height: 150 } };
+            html5QrCode = new Html5Qrcode("reader");
+            
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    let cameraId = devices[devices.length - 1].id;
+                    html5QrCode.start(
+                        cameraId, 
+                        qrConfig, 
+                        (decodedText) => {
+                            pararCameraScanner();
+                            document.getElementById('modalCameraScanner').style.display = 'none';
+                            if (modoScannerDestino === 'pdv') {
+                                processarCodigoLidoPdv(decodedText);
+                            } else {
+                                document.getElementById('estCodBarra').value = decodedText;
+                            }
+                        },
+                        () => {}
+                    ).catch(() => {
+                        document.getElementById('statusCameraMsg').innerText = "Erro ao iniciar a câmera.";
+                    });
+                } else {
+                    document.getElementById('statusCameraMsg').innerText = "Nenhuma câmera encontrada.";
+                }
+            }).catch(() => {
+                document.getElementById('statusCameraMsg').innerText = "Erro de acesso à câmera.";
+            });
+        }
+
+        function pararCameraScanner() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
+            }
+        }
+
+        function fecharModalCameraScanner() {
+            pararCameraScanner();
+            document.getElementById('modalCameraScanner').style.display = 'none';
+        }
+
+        function processarCodigoLidoPdv(codigo) {
+            const produtoEncontrado = estoque.find(p => p.codBarra === codigo);
+            if (produtoEncontrado) {
+                if (produtoEncontrado.qtd <= 0) {
+                    alert(`Produto ${produtoEncontrado.nome} sem estoque!`);
+                    return;
+                }
+                carrinhoPdv.push({
+                    id: produtoEncontrado.id,
+                    nome: produtoEncontrado.nome,
+                    qtd: 1,
+                    preco: produtoEncontrado.venda,
+                    subtotal: produtoEncontrado.venda
+                });
+                renderCarrinho();
+            } else {
+                alert(`Produto não encontrado para o código: ${codigo}`);
+            }
+        }
+
+        // Caixa / Turno
+        let caixaTurno = JSON.parse(localStorage.getItem('caixaTurnoAtual')) || { aberto: false, valorInicial: 0, horaAbertura: '' };
+
+        function atualizarBotaoTurno() {
+            const btn = document.getElementById('btnStatusTurno');
+            if (caixaTurno.aberto) {
+                btn.innerText = "📦 Caixa: ABERTO";
+                btn.className = "btn btn-success";
+            } else {
+                btn.innerText = "📦 Caixa: FECHADO";
+                btn.className = "btn btn-warning";
+            }
+        }
+
+        function abrirModalTurno() {
+            const modal = document.getElementById('modalTurno');
+            const conteudo = document.getElementById('conteudoModalTurno');
+            const titulo = document.getElementById('tituloModalTurno');
+            modal.style.display = 'flex';
+
+            if (!caixaTurno.aberto) {
+                titulo.innerText = "Abrir Caixa / Turno";
+                conteudo.innerHTML = `
+                    <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 15px;">Informe o troco inicial:</p>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label>Valor de Troco Inicial (R$)</label>
+                        <input type="number" step="0.01" min="0" id="inputTrocoInicial" value="100.00">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-success" style="flex: 1;" onclick="confirmarAberturaCaixa()">Abrir Caixa</button>
+                        <button class="btn btn-secondary" onclick="fecharModalTurno()">Cancelar</button>
+                    </div>
+                `;
+            } else {
+                titulo.innerText = "Fechar Caixa / Turno";
+                let totalDinheiro = caixa.filter(c => c.tipo === 'Entrada' && c.desc.includes('(Dinheiro)')).reduce((acc, curr) => acc + curr.valor, 0);
+                let totalEsperado = caixaTurno.valorInicial + totalDinheiro;
+
+                conteudo.innerHTML = `
+                    <p style="font-size: 0.9rem; margin-bottom: 10px;">Aberto em: <strong>${caixaTurno.horaAbertura}</strong></p>
+                    <p style="font-size: 0.9rem; margin-bottom: 10px;">Troco Inicial: <strong>R$ ${caixaTurno.valorInicial.toFixed(2)}</strong></p>
+                    <div class="form-group" style="margin-bottom: 15px; background: #eef2ff; padding: 10px; border-radius: 6px;">
+                        <label>Total Esperado na Gaveta: R$ ${totalEsperado.toFixed(2)}</label>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-danger" style="flex: 1;" onclick="confirmarFechamentoCaixa()">Fechar Caixa</button>
+                        <button class="btn btn-secondary" onclick="fecharModalTurno()">Voltar</button>
+                    </div>
+                `;
+            }
+        }
+
+        function fecharModalTurno() { document.getElementById('modalTurno').style.display = 'none'; }
+        
+        function confirmarAberturaCaixa() {
+            const troco = parseFloat(document.getElementById('inputTrocoInicial').value);
+            if (isNaN(troco) || troco < 0) {
+                alert('Informe um valor de troco válido.');
+                return;
+            }
+            caixaTurno = { aberto: true, valorInicial: troco, horaAbertura: new Date().toLocaleString() };
+            localStorage.setItem('caixaTurnoAtual', JSON.stringify(caixaTurno));
+            atualizarBotaoTurno();
+            fecharModalTurno();
+            alert('Caixa aberto!');
+        }
+
+        function confirmarFechamentoCaixa() {
+            caixaTurno = { aberto: false, valorInicial: 0, horaAbertura: '' };
+            localStorage.setItem('caixaTurnoAtual', JSON.stringify(caixaTurno));
+            atualizarBotaoTurno();
+            fecharModalTurno();
+            alert('Caixa fechado!');
+        }
+
+        // Atalhos de Teclado Globais (F2, F4, ESC)
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                switchTab(null, 'pdv');
+                const inputCodigo = document.getElementById('pdvCodigoBarraInput');
+                if(inputCodigo) inputCodigo.focus();
+            } else if (e.key === 'F4') {
+                e.preventDefault();
+                if(document.getElementById('pdv').classList.contains('active')) finalizarVendaPdv();
+            } else if (e.key === 'Escape') {
+                if(document.getElementById('pdv').classList.contains('active')) limparCarrinho();
+                fecharModalAdmin(); fecharModalRecibo(); fecharModalTurno(); fecharModalCameraScanner();
+            }
+        });
+
+        // Estoque (Validação Dupla + Paginação)
+        let estoque = JSON.parse(localStorage.getItem('estoque')) || [];
+        function salvarEstoque() {
+            localStorage.setItem('estoque', JSON.stringify(estoque));
+            renderEstoque();
+            atualizarSelectProdutosPdv();
+        }
+
+        function addEstoque(e) {
+            e.preventDefault();
+            const custo = parseFloat(document.getElementById('estCusto').value);
+            const venda = parseFloat(document.getElementById('estVenda').value);
+            const qtd = parseInt(document.getElementById('estQtd').value);
+            const min = parseInt(document.getElementById('estMin').value);
+
+            // Validação dupla no Servidor/Frontend para preços e quantidades negativas
+            if (custo < 0 || venda < 0 || qtd < 0 || min < 0) {
+                alert('Os valores de preço, quantidade e mínimo não podem ser negativos.');
+                return;
+            }
+
+            mostrarLoading(true);
+            setTimeout(() => {
+                const produto = {
+                    id: Date.now(),
+                    codBarra: document.getElementById('estCodBarra').value.trim() || String(Date.now()),
+                    nome: document.getElementById('estNome').value.trim(),
+                    custo: custo,
+                    venda: venda,
+                    qtd: qtd,
+                    min: min
+                };
+                estoque.push(produto);
+                salvarEstoque();
+                document.getElementById('formEstoque').reset();
+                mostrarLoading(false);
+                alert('Produto cadastrado com sucesso!');
+            }, 300);
+        }
+
+        function removerEstoque(id) {
+            if (!confirm('Deseja realmente excluir este produto?')) return;
+            estoque = estoque.filter(item => item.id !== id);
+            salvarEstoque();
+        }
+
+        function mudarPaginaEstoque(direcao) {
+            const totalPaginas = Math.ceil(estoque.length / itensPorPagina) || 1;
+            paginaAtualEstoque += direcao;
+            if (paginaAtualEstoque < 1) paginaAtualEstoque = 1;
+            if (paginaAtualEstoque > totalPaginas) paginaAtualEstoque = totalPaginas;
+            renderEstoque();
+        }
+
+        function renderEstoque() {
+            const tbody = document.getElementById('tabelaEstoque');
+            const paginacaoDiv = document.getElementById('paginacaoEstoque');
+            if(!tbody) return;
+            
+            tbody.innerHTML = '';
+            const totalPaginas = Math.ceil(estoque.length / itensPorPagina) || 1;
+            if (paginaAtualEstoque > totalPaginas) paginaAtualEstoque = totalPaginas;
+
+            const inicio = (paginaAtualEstoque - 1) * itensPorPagina;
+            const fim = inicio + itensPorPagina;
+            const itensPagina = estoque.slice(inicio, fim);
+
+            if (itensPagina.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #6b7280;">Nenhum produto cadastrado</td></tr>';
+            } else {
+                itensPagina.forEach(item => {
+                    const statusBadge = item.qtd <= item.min ? '<span class="badge badge-alert" style="padding:2px 6px;">Comprar</span>' : '<span class="badge badge-ok" style="padding:2px 6px;">OK</span>';
+                    const acaoBotao = (usuarioAtualObjeto && usuarioAtualObjeto.cargo === 'gerente') ? `<button class="btn btn-danger" onclick="removerEstoque(${item.id})">Excluir</button>` : '-';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><code>${item.codBarra || '-'}</code></td>
+                            <td>${item.nome}</td>
+                            <td>R$ ${item.custo.toFixed(2)}</td>
+                            <td>R$ ${item.venda.toFixed(2)}</td>
+                            <td>${item.qtd}</td>
+                            <td>${item.min}</td>
+                            <td>${statusBadge}</td>
+                            <td>${acaoBotao}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            if (paginacaoDiv) {
+                paginacaoDiv.innerHTML = `
+                    <span>Página ${paginaAtualEstoque} de ${totalPaginas} (Total: ${estoque.length} itens)</span>
+                    <div class="pagination-buttons">
+                        <button class="btn btn-secondary" onclick="mudarPaginaEstoque(-1)" ${paginaAtualEstoque === 1 ? 'disabled style="opacity:0.5"' : ''}>Anterior</button>
+                        <button class="btn btn-secondary" onclick="mudarPaginaEstoque(1)" ${paginaAtualEstoque === totalPaginas ? 'disabled style="opacity:0.5"' : ''}>Próxima</button>
+                    </div>
+                `;
+            }
+        }
+
+        // PDV Carrinho
+        let carrinhoPdv = [];
+        function atualizarSelectProdutosPdv() {
+            const select = document.getElementById('pdvProduto');
+            if(!select) return;
+            select.innerHTML = '<option value="">-- Escolha um produto --</option>';
+            estoque.forEach(item => {
+                select.innerHTML += `<option value="${item.id}" data-venda="${item.venda}" data-nome="${item.nome}" data-estoque="${item.qtd}">${item.nome} (Estoque: ${item.qtd} | R$ ${item.venda.toFixed(2)})</option>`;
+            });
+        }
+        function atualizarPrecoPdv() {
+            const select = document.getElementById('pdvProduto');
+            const selectedOption = select.options[select.selectedIndex];
+            document.getElementById('pdvPreco').value = select.value ? selectedOption.getAttribute('data-venda') : '';
+        }
+        function checarLeitorCodigoBarras(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const codigo = document.getElementById('pdvCodigoBarraInput').value.trim();
+                if (!codigo) return;
+                processarCodigoLidoPdv(codigo);
+                document.getElementById('pdvCodigoBarraInput').value = '';
+            }
+        }
+        function addItemCarrinho(e) {
+            e.preventDefault();
+            const select = document.getElementById('pdvProduto');
+            const selectedOption = select.options[select.selectedIndex];
+            const produtoId = select.value;
+            const nomeProd = selectedOption.getAttribute('data-nome');
+            const estoqueAtual = parseInt(selectedOption.getAttribute('data-estoque'));
+            const qtdDesejada = parseInt(document.getElementById('pdvQtd').value);
+            const precoUnit = parseFloat(document.getElementById('pdvPreco').value);
+
+            // Validação dupla de quantidade e estoque disponível
+            if (qtdDesejada <= 0) {
+                alert('A quantidade deve ser maior que zero.');
+                return;
+            }
+            if (qtdDesejada > estoqueAtual) {
+                alert(`Estoque insuficiente! Restam ${estoqueAtual} unidades.`);
+                return;
+            }
+
+            carrinhoPdv.push({ id: produtoId, nome: nomeProd, qtd: qtdDesejada, preco: precoUnit, subtotal: qtdDesejada * precoUnit });
+            renderCarrinho();
+            document.getElementById('formPdv').reset();
+            document.getElementById('pdvQtd').value = 1;
+            document.getElementById('pdvCodigoBarraInput').focus();
+        }
+        function removerItemCarrinho(index) { carrinhoPdv.splice(index, 1); renderCarrinho(); }
+        function limparCarrinho() { carrinhoPdv = []; renderCarrinho(); }
+        function renderCarrinho() {
+            const tbody = document.getElementById('tabelaCarrinho');
+            const totalBox = document.getElementById('pdvTotalGeral');
+            tbody.innerHTML = '';
+            let totalGeral = 0;
+            if (carrinhoPdv.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #6b7280;">Carrinho vazio</td></tr>';
+                totalBox.innerText = 'Total: R$ 0,00';
+                return;
+            }
+            carrinhoPdv.forEach((item, index) => {
+                totalGeral += item.subtotal;
+                tbody.innerHTML += `<tr><td>${item.nome}</td><td>${item.qtd}</td><td>R$ ${item.subtotal.toFixed(2)}</td><td><button class="btn btn-danger" onclick="removerItemCarrinho(${index})">X</button></td></tr>`;
+            });
+            totalBox.innerText = `Total: R$ ${totalGeral.toFixed(2)}`;
+        }
+
+        const selectPgto = document.getElementById('pdvFormaPagamento');
+        if(selectPgto) {
+            selectPgto.addEventListener('change', function() {
+                const grupoFiado = document.getElementById('grupoNomeClienteFiado');
+                grupoFiado.style.display = this.value === 'Fiado' ? 'block' : 'none';
+                document.getElementById('pdvNomeCliente').required = this.value === 'Fiado';
+            });
+        }
+
+        let ultimoTextoRecibo = "";
+        let ultimoTelWhatsApp = "";
+
+        function finalizarVendaPdv() {
+            if (!caixaTurno.aberto) {
+                if (!confirm('Caixa fechado. Deseja abrir automaticamente com R$ 100,00 de troco?')) return;
+                caixaTurno = { aberto: true, valorInicial: 100.00, horaAbertura: new Date().toLocaleString() };
+                localStorage.setItem('caixaTurnoAtual', JSON.stringify(caixaTurno));
+                atualizarBotaoTurno();
+            }
+            if (carrinhoPdv.length === 0) { alert('Carrinho vazio!'); return; }
+
+            const formaPgto = document.getElementById('pdvFormaPagamento').value;
+            const hojeStr = new Date().toISOString().split('T')[0];
+            let totalVenda = carrinhoPdv.reduce((acc, item) => acc + item.subtotal, 0);
+
+            mostrarLoading(true);
+            setTimeout(() => {
+                carrinhoPdv.forEach(itemCarrinho => {
+                    const prodIndex = estoque.findIndex(p => p.id == itemCarrinho.id);
+                    if (prodIndex !== -1) estoque[prodIndex].qtd -= itemCarrinho.qtd;
+                });
+                salvarEstoque();
+
+                const descResumo = carrinhoPdv.map(i => `${i.qtd}x ${i.nome}`).join(', ');
+
+                if (formaPgto === 'Fiado') {
+                    fiado.push({ id: Date.now(), cliente: document.getElementById('pdvNomeCliente').value.trim(), tel: '', desc: `PDV: ${descResumo}`, valor: totalVenda, data: hojeStr });
+                    salvarFiado();
+                } else {
+                    caixa.push({ id: Date.now(), data: hojeStr, desc: `Venda PDV (${formaPgto}): ${descResumo}`, tipo: 'Entrada', valor: totalVenda });
+                    salvarCaixa();
+                }
+
+                ultimoTelWhatsApp = document.getElementById('pdvTelCliente').value.trim();
+                ultimoTextoRecibo = `COMPROVANTE - ${config.nome.toUpperCase()}\nData: ${hojeStr.split('-').reverse().join('/')}\n--------------------------------\n`;
+                carrinhoPdv.forEach(i => { ultimoTextoRecibo += `${i.qtd}x ${i.nome} - R$ ${i.subtotal.toFixed(2)}\n`; });
+                ultimoTextoRecibo += `--------------------------------\nTOTAL: R$ ${totalVenda.toFixed(2)}\nPgto: ${formaPgto}\nObrigado!`;
+
+                mostrarLoading(false);
+                abrirModalRecibo(ultimoTextoRecibo);
+                carrinhoPdv = [];
+                renderCarrinho();
+                document.getElementById('pdvFormaPagamento').value = 'Dinheiro';
+                document.getElementById('grupoNomeClienteFiado').style.display = 'none';
+                document.getElementById('pdvCodigoBarraInput').focus();
+            }, 300);
+        }
+
+        function abrirModalRecibo(texto) {
+            document.getElementById('conteudoRecibo').innerText = texto;
+            document.getElementById('modalRecibo').style.display = 'flex';
+        }
+        function fecharModalRecibo() { document.getElementById('modalRecibo').style.display = 'none'; }
+        function enviarWhatsAppRecibo() {
+            if (!ultimoTelWhatsApp) {
+                let telInput = prompt("Digite o WhatsApp do cliente:");
+                if (!telInput) return;
+                ultimoTelWhatsApp = telInput.trim();
+            }
+            window.open(`https://api.whatsapp.com/send?phone=${ultimoTelWhatsApp}&text=${encodeURIComponent(ultimoTextoRecibo)}`, '_blank');
+            fecharModalRecibo();
+        }
+        function imprimirReciboTermico() {
+            const janela = window.open('', '', 'width=300,height=600');
+            janela.document.write(`<html><head><title>Imprimir</title><style>body{font-family:monospace;font-size:12px;width:250px;margin:auto;padding:10px;}</style></head><body><pre>${ultimoTextoRecibo}</pre><script>window.onload=function(){window.print();window.close();};<\/script></body></html>`);
+            janela.document.close();
+        }
+
+        // Módulos Auxiliares (Clientes, Caixa, Contas, Fiado, Posts com Paginação)
+        let clientes = JSON.parse(localStorage.getItem('clientesCRM')) || [];
+        function salvarClientes() { localStorage.setItem('clientesCRM', JSON.stringify(clientes)); renderClientes(); }
+        function addCliente(e) {
+            e.preventDefault();
+            const nome = document.getElementById('cliNome').value.trim();
+            if (!nome) { alert('Nome do cliente obrigatório.'); return; }
+            clientes.push({ id: Date.now(), nome: nome, tel: document.getElementById('cliTel').value.trim(), end: document.getElementById('cliEnd').value.trim(), aniversario: document.getElementById('cliAniversario').value });
+            salvarClientes(); document.getElementById('formCliente').reset();
+            alert('Cliente cadastrado com sucesso!');
+        }
+        function removerCliente(id) { 
+            if (!confirm('Deseja excluir este cliente?')) return;
+            clientes = clientes.filter(c => c.id !== id); 
+            salvarClientes(); 
+        }
+        function mudarPaginaClientes(direcao) {
+            const totalPaginas = Math.ceil(clientes.length / itensPorPagina) || 1;
+            paginaAtualClientes += direcao;
+            if (paginaAtualClientes < 1) paginaAtualClientes = 1;
+            if (paginaAtualClientes > totalPaginas) paginaAtualClientes = totalPaginas;
+            renderClientes();
+        }
+        function renderClientes() {
+            const tbody = document.getElementById('tabelaClientes');
+            const paginacaoDiv = document.getElementById('paginacaoClientes');
+            if(!tbody) return;
+            
+            const totalPaginas = Math.ceil(clientes.length / itensPorPagina) || 1;
+            if (paginaAtualClientes > totalPaginas) paginaAtualClientes = totalPaginas;
+
+            const inicio = (paginaAtualClientes - 1) * itensPorPagina;
+            const fim = inicio + itensPorPagina;
+            const itensPagina = clientes.slice(inicio, fim);
+
+            tbody.innerHTML = itensPagina.length === 0 ? '<tr><td colspan="5" style="text-align: center; color: #6b7280;">Nenhum cliente cadastrado</td></tr>' : '';
+            itensPagina.forEach(c => {
+                tbody.innerHTML += `<tr><td><strong>${c.nome}</strong></td><td>${c.tel || '-'}</td><td>${c.end || '-'}</td><td>${c.aniversario || '-'}</td><td><button class="btn btn-danger" onclick="removerCliente(${c.id})">Excluir</button></td></tr>`;
+            });
+
+            if (paginacaoDiv) {
+                paginacaoDiv.innerHTML = `
+                    <span>Página ${paginaAtualClientes} de ${totalPaginas} (Total: ${clientes.length} clientes)</span>
+                    <div class="pagination-buttons">
+                        <button class="btn btn-secondary" onclick="mudarPaginaClientes(-1)" ${paginaAtualClientes === 1 ? 'disabled style="opacity:0.5"' : ''}>Anterior</button>
+                        <button class="btn btn-secondary" onclick="mudarPaginaClientes(1)" ${paginaAtualClientes === totalPaginas ? 'disabled style="opacity:0.5"' : ''}>Próxima</button>
+                    </div>
+                `;
+            }
+        }
+
+        let contas = JSON.parse(localStorage.getItem('contasPagar')) || [];
+        function salvarContas() { localStorage.setItem('contasPagar', JSON.stringify(contas)); renderContas(); }
+        function addContaPagar(e) {
+            e.preventDefault();
+            const valor = parseFloat(document.getElementById('contaValor').value);
+            if (valor <= 0) { alert('O valor da conta deve ser maior que zero.'); return; }
+            contas.push({ id: Date.now(), desc: document.getElementById('contaDesc').value.trim(), valor: valor, venc: document.getElementById('contaVenc').value, pago: false });
+            salvarContas(); document.getElementById('formContas').reset();
+        }
+        function pagarConta(id) {
+            const conta = contas.find(c => c.id === id);
+            if (!conta || !confirm(`Dar baixa e registrar saída de R$ ${conta.valor.toFixed(2)} no caixa?`)) return;
+            conta.pago = true;
+            caixa.push({ id: Date.now(), data: new Date().toISOString().split('T')[0], desc: `Pagamento Conta: ${conta.desc}`, tipo: 'Saída', valor: conta.valor });
+            salvarCaixa(); salvarContas();
+        }
+        function removerConta(id) { 
+            if (!confirm('Deseja excluir esta conta?')) return;
+            contas = contas.filter(c => c.id !== id); 
+            salvarContas(); 
+        }
+        function renderContas() {
+            const tbody = document.getElementById('tabelaContas');
+            if(!tbody) return;
+            tbody.innerHTML = contas.length === 0 ? '<tr><td colspan="5" style="text-align: center; color: #6b7280;">Nenhuma conta a pagar</td></tr>' : '';
+            contas.forEach(c => {
+                tbody.innerHTML += `<tr><td>${c.venc}</td><td>${c.desc}</td><td>R$ ${c.valor.toFixed(2)}</td><td>${c.pago ? 'Pago' : 'Em Aberto'}</td><td>${!c.pago ? `<button class="btn btn-success" onclick="pagarConta(${c.id})">Pagar</button>` : ''} <button class="btn btn-danger" onclick="removerConta(${c.id})">Excluir</button></td></tr>`;
+            });
+        }
+
+        let caixa = JSON.parse(localStorage.getItem('caixa')) || [];
+        function salvarCaixa() { localStorage.setItem('caixa', JSON.stringify(caixa)); renderCaixa(); }
+        function addCaixa(e) {
+            e.preventDefault();
+            const valor = parseFloat(document.getElementById('cxValor').value);
+            if (valor <= 0) { alert('O valor deve ser maior que zero.'); return; }
+            caixa.push({ id: Date.now(), data: document.getElementById('cxData').value, desc: document.getElementById('cxDesc').value.trim(), tipo: document.getElementById('cxTipo').value, valor: valor });
+            salvarCaixa(); document.getElementById('formCaixa').reset();
+            alert('Movimentação registrada!');
+        }
+        function removerCaixa(id) { 
+            if (!confirm('Deseja excluir este registro de caixa?')) return;
+            caixa = caixa.filter(item => item.id !== id); 
+            salvarCaixa(); 
+        }
+        function mudarPaginaCaixa(direcao) {
+            const filtroPeriodo = document.getElementById('filtroCaixaPeriodo').value;
+            const dadosFiltrados = filtrarCaixaPorPeriodo(caixa, filtroPeriodo);
+            const totalPaginas = Math.ceil(dadosFiltrados.length / itensPorPagina) || 1;
+            paginaAtualCaixa += direcao;
+            if (paginaAtualCaixa < 1) paginaAtualCaixa = 1;
+            if (paginaAtualCaixa > totalPaginas) paginaAtualCaixa = totalPaginas;
+            renderCaixa();
+        }
+        function filtrarCaixaPorPeriodo(lista, periodo) {
+            const hoje = new Date().toISOString().split('T')[0];
+            if (periodo === 'hoje') return lista.filter(i => i.data === hoje);
+            if (periodo === '7dias') {
+                const limite = new Date(); limite.setDate(limite.getDate() - 7);
+                return lista.filter(i => new Date(i.data) >= limite);
+            }
+            if (periodo === 'mes') {
+                const mesAtual = hoje.slice(0, 7);
+                return lista.filter(i => i.data.startsWith(mesAtual));
+            }
+            return lista;
+        }
+        function renderCaixa() {
+            const tbody = document.getElementById('tabelaCaixa');
+            const paginacaoDiv = document.getElementById('paginacaoCaixa');
+            if(!tbody) return;
+            
+            const filtroPeriodo = document.getElementById('filtroCaixaPeriodo').value;
+            const dadosFiltrados = filtrarCaixaPorPeriodo(caixa, filtroPeriodo);
+
+            const totalPaginas = Math.ceil(dadosFiltrados.length / itensPorPagina) || 1;
+            if (paginaAtualCaixa > totalPaginas) paginaAtualCaixa = totalPaginas;
+
+            const inicio = (paginaAtualCaixa - 1) * itensPorPagina;
+            const fim = inicio + itensPorPagina;
+            const itensPagina = dadosFiltrados.slice(inicio, fim);
+
+            tbody.innerHTML = '';
+            let saldo = 0, totalEntradas = 0, totalSaidas = 0;
+            
+            // Calcula totais globais corretos
+            caixa.forEach(item => {
+                if (item.tipo === 'Entrada') { totalEntradas += item.valor; saldo += item.valor; } else { totalSaidas += item.valor; saldo -= item.valor; }
+            });
+
+            if (itensPagina.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6b7280;">Nenhum registro encontrado</td></tr>';
+            } else {
+                itensPagina.forEach(item => {
+                    tbody.innerHTML += `<tr><td>${item.data}</td><td>${item.desc}</td><td>${item.tipo}</td><td>R$ ${item.valor.toFixed(2)}</td><td><button class="btn btn-danger" onclick="removerCaixa(${item.id})">Excluir</button></td></tr>`;
+                });
+            }
+
+            document.getElementById('resumoEntradas').innerText = `Entradas: R$ ${totalEntradas.toFixed(2)}`;
+            document.getElementById('resumoSaidas').innerText = `Saídas: R$ ${totalSaidas.toFixed(2)}`;
+            document.getElementById('saldoCaixa').innerText = `Saldo: R$ ${saldo.toFixed(2)}`;
+
+            if (paginacaoDiv) {
+                paginacaoDiv.innerHTML = `
+                    <span>Página ${paginaAtualCaixa} de ${totalPaginas} (Exibindo ${dadosFiltrados.length} registros)</span>
+                    <div class="pagination-buttons">
+                        <button class="btn btn-secondary" onclick="mudarPaginaCaixa(-1)" ${paginaAtualCaixa === 1 ? 'disabled style="opacity:0.5"' : ''}>Anterior</button>
+                        <button class="btn btn-secondary" onclick="mudarPaginaCaixa(1)" ${paginaAtualCaixa === totalPaginas ? 'disabled style="opacity:0.5"' : ''}>Próxima</button>
+                    </div>
+                `;
+            }
+        }
+
+        let fiado = JSON.parse(localStorage.getItem('fiado')) || [];
+        function salvarFiado() { localStorage.setItem('fiado', JSON.stringify(fiado)); renderFiado(); }
+        function addFiado(e) {
+            e.preventDefault();
+            const valor = parseFloat(document.getElementById('fiadoValor').value);
+            if (valor <= 0) { alert('O valor do fiado deve ser maior que zero.'); return; }
+            fiado.push({ id: Date.now(), cliente: document.getElementById('fiadoCliente').value.trim(), tel: document.getElementById('fiadoTel').value.trim(), desc: document.getElementById('fiadoDesc').value.trim(), valor: valor, data: document.getElementById('fiadoData').value });
+            salvarFiado(); document.getElementById('formFiado').reset();
+            alert('Fiado registrado com sucesso!');
+        }
+        function quitarFiado(id) {
+            const itemFiado = fiado.find(f => f.id === id);
+            if (!confirm(`Confirmar recebimento da dívida de ${itemFiado ? itemFiado.cliente : ''}?`)) return;
+            if (itemFiado) {
+                caixa.push({ id: Date.now(), data: new Date().toISOString().split('T')[0], desc: `Recebimento Fiado: ${itemFiado.cliente}`, tipo: 'Entrada', valor: itemFiado.valor });
+                salvarCaixa();
+            }
+            fiado = fiado.filter(item => item.id !== id);
+            salvarFiado();
+        }
+        function mudarPaginaFiado(direcao) {
+            const totalPaginas = Math.ceil(fiado.length / itensPorPagina) || 1;
+            paginaAtualFiado += direcao;
+            if (paginaAtualFiado < 1) paginaAtualFiado = 1;
+            if (paginaAtualFiado > totalPaginas) paginaAtualFiado = totalPaginas;
+            renderFiado();
+        }
+        function renderFiado() {
+            const tbody = document.getElementById('tabelaFiado');
+            const paginacaoDiv = document.getElementById('paginacaoFiado');
+            if(!tbody) return;
+            
+            const totalPaginas = Math.ceil(fiado.length / itensPorPagina) || 1;
+            if (paginaAtualFiado > totalPaginas) paginaAtualFiado = totalPaginas;
+
+            const inicio = (paginaAtualFiado - 1) * itensPorPagina;
+            const fim = inicio + itensPorPagina;
+            const itensPagina = fiado.slice(inicio, fim);
+
+            tbody.innerHTML = '';
+            let totalReceber = 0;
+            fiado.forEach(item => { totalReceber += item.valor; });
+
+            if (itensPagina.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6b7280;">Nenhum cliente devendo</td></tr>';
+            } else {
+                itensPagina.forEach(item => {
+                    tbody.innerHTML += `<tr><td><strong>${item.cliente}</strong></td><td>${item.tel || '-'}</td><td>${item.desc}</td><td>R$ ${item.valor.toFixed(2)}</td><td>${item.data}</td><td><button class="btn btn-success" onclick="quitarFiado(${item.id})">Recebido</button></td></tr>`;
+                });
+            }
+
+            document.getElementById('totalFiado').innerText = `Total a Receber (Fiado): R$ ${totalReceber.toFixed(2)}`;
+
+            if (paginacaoDiv) {
+                paginacaoDiv.innerHTML = `
+                    <span>Página ${paginaAtualFiado} de ${totalPaginas} (Total: ${fiado.length} registros)</span>
+                    <div class="pagination-buttons">
+                        <button class="btn btn-secondary" onclick="mudarPaginaFiado(-1)" ${paginaAtualFiado === 1 ? 'disabled style="opacity:0.5"' : ''}>Anterior</button>
+                        <button class="btn btn-secondary" onclick="mudarPaginaFiado(1)" ${paginaAtualFiado === totalPaginas ? 'disabled style="opacity:0.5"' : ''}>Próxima</button>
+                    </div>
+                `;
+            }
+        }
+
+        let posts = JSON.parse(localStorage.getItem('posts')) || [];
+        function salvarPosts() { localStorage.setItem('posts', JSON.stringify(posts)); renderPosts(); }
+        function addPost(e) {
+            e.preventDefault();
+            posts.push({ id: Date.now(), data: document.getElementById('postData').value, rede: document.getElementById('postRede').value, tema: document.getElementById('postTema').value.trim(), status: document.getElementById('postStatus').value });
+            salvarPosts(); document.getElementById('formPost').reset();
+        }
+        function removerPost(id) { 
+            if (!confirm('Excluir postagem?')) return;
+            posts = posts.filter(item => item.id !== id); 
+            salvarPosts(); 
+        }
+        function renderPosts() {
+            const tbody = document.getElementById('tabelaPosts');
+            if(!tbody) return;
+            tbody.innerHTML = posts.length === 0 ? '<tr><td colspan="5" style="text-align: center; color: #6b7280;">Nenhuma postagem agendada</td></tr>' : '';
+            posts.forEach(item => {
+                tbody.innerHTML += `<tr><td>${item.data}</td><td>${item.rede}</td><td>${item.tema}</td><td>${item.status}</td><td><button class="btn btn-danger" onclick="removerPost(${item.id})">Excluir</button></td></tr>`;
+            });
+        }
+
+        function atualizarGraficoDashboard() {
+            const ctx = document.getElementById('graficoFaturamento');
+            if (!ctx) return;
+            let labels = [], valoresDiarios = [];
+            for (let i = 6; i >= 0; i--) {
+                let d = new Date(); d.setDate(d.getDate() - i);
+                let formatoIso = d.toISOString().split('T')[0];
+                labels.push(formatoIso.split('-').reverse().slice(0, 2).join('/'));
+                valoresDiarios.push(caixa.filter(c => c.data === formatoIso && c.tipo === 'Entrada').reduce((acc, curr) => acc + curr.valor, 0));
+            }
+            if (meuGraficoFaturamento) meuGraficoFaturamento.destroy();
+            meuGraficoFaturamento = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ label: 'Faturamento Diário (R$)', data: valoresDiarios, backgroundColor: config.cor || '#4f46e5', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        function salvarTudoNoArquivo() {
+            const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `sistema_loja_atualizado.html`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('Arquivo atualizado gerado com sucesso!');
+        }
+
+        function exportarBackup() {
+            const dadosCompletos = { config, estoque, caixa, fiado, contas, clientes, posts };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dadosCompletos));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `backup_sistema.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importarBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const dados = JSON.parse(e.target.result);
+                    if (dados.estoque && dados.caixa) {
+                        localStorage.setItem('configLoja', JSON.stringify(dados.config));
+                        localStorage.setItem('estoque', JSON.stringify(dados.estoque));
+                        localStorage.setItem('caixa', JSON.stringify(dados.caixa));
+                        localStorage.setItem('fiado', JSON.stringify(dados.fiado || []));
+                        localStorage.setItem('contasPagar', JSON.stringify(dados.contas || []));
+                        localStorage.setItem('clientesCRM', JSON.stringify(dados.clientes || []));
+                        localStorage.setItem('posts', JSON.stringify(dados.posts || []));
+                        alert('Backup restaurado!'); location.reload();
+                    } else { alert('Arquivo inválido.'); }
+                } catch (err) { alert('Erro ao ler JSON.'); }
+            };
+            reader.readAsText(file);
+        }
+
+        function exportarCSV(tipo) {
+            let dados = tipo === 'estoque' ? estoque : caixa;
+            if (dados.length === 0) { alert('Sem dados!'); return; }
+            let csvContent = "data:text/csv;charset=utf-8,";
+            if (tipo === 'estoque') {
+                csvContent += "CodBarra,Produto,Custo,Venda,Estoque,Minimo\n";
+                estoque.forEach(i => { csvContent += `"${i.codBarra}","${i.nome}",${i.custo},${i.venda},${i.qtd},${i.min}\n`; });
+            } else {
+                csvContent += "Data,Descricao,Tipo,Valor\n";
+                caixa.forEach(i => { csvContent += `"${i.data}","${i.desc}",${i.tipo},${i.valor}\n`; });
+            }
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `relatorio_${tipo}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
