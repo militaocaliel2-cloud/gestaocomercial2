@@ -1001,6 +1001,7 @@
         let paginaAtualFiado = 1;
 
         // ARRAYS DE DADOS SINCRONIZADOS
+        let config = { nome: 'Painel de Gestão Comercial', cor: '#4f46e5' };
         let estoque = [];
         let caixa = [];
         let clientes = [];
@@ -1089,59 +1090,65 @@
 
         // CARREGA TODOS OS DADOS DO FIRESTORE EM TEMPO REAL / UNIFICADO
         async function carregarDadosDoFirebase() {
-            try {
-                // Carregar Config
-                const configDoc = await db.collection('sistema').doc('config').get();
-                if (configDoc.exists) {
-                    config = configDoc.data();
-                }
+    try {
+        console.log("Iniciando carregamento do Firebase...");
 
-                // Carregar Estoque
-                const estoqueSnap = await db.collection('estoque').get();
-                estoque = [];
-                estoqueSnap.forEach(doc => {
-                    estoque.push({ firebaseId: doc.id, ...doc.data() });
-                });
-
-                // Carregar Caixa
-                const caixaSnap = await db.collection('caixa').get();
-                caixa = [];
-                caixaSnap.forEach(doc => {
-                    caixa.push({ firebaseId: doc.id, ...doc.data() });
-                });
-
-                // Carregar Clientes
-                const clientesSnap = await db.collection('clientes').get();
-                clientes = [];
-                clientesSnap.forEach(doc => {
-                    clientes.push({ firebaseId: doc.id, ...doc.data() });
-                });
-
-                // Carregar Contas a Pagar
-                const contasSnap = await db.collection('contas').get();
-                contas = [];
-                contasSnap.forEach(doc => {
-                    contas.push({ firebaseId: doc.id, ...doc.data() });
-                });
-
-                // Carregar Fiado
-                const fiadoSnap = await db.collection('fiado').get();
-                fiado = [];
-                fiadoSnap.forEach(doc => {
-                    fiado.push({ firebaseId: doc.id, ...doc.data() });
-                });
-
-                // Carregar Posts
-                const postsSnap = await db.collection('posts').get();
-                posts = [];
-                postsSnap.forEach(doc => {
-                    posts.push({ firebaseId: doc.id, ...doc.data() });
-                });
-
-            } catch (error) {
-                console.error("Erro ao sincronizar dados do Firebase:", error);
-            }
+        // Carregar Config
+        const configDoc = await db.collection('sistema').doc('config').get();
+        if (configDoc.exists) {
+            config = configDoc.data();
         }
+
+        // Carregar Estoque
+        const estoqueSnap = await db.collection('estoque').get();
+        estoque = [];
+        estoqueSnap.forEach(doc => {
+            estoque.push({ firebaseId: doc.id, ...doc.data() });
+        });
+        console.log("Estoque carregado:", estoque.length);
+
+        // Carregar Caixa
+        const caixaSnap = await db.collection('caixa').get();
+        caixa = [];
+        caixaSnap.forEach(doc => {
+            caixa.push({ firebaseId: doc.id, ...doc.data() });
+        });
+
+        // Carregar Clientes
+        const clientesSnap = await db.collection('clientes').get();
+        clientes = [];
+        clientesSnap.forEach(doc => {
+            clientes.push({ firebaseId: doc.id, ...doc.data() });
+        });
+
+        // Carregar Contas a Pagar
+        const contasSnap = await db.collection('contas').get();
+        contas = [];
+        contasSnap.forEach(doc => {
+            contas.push({ firebaseId: doc.id, ...doc.data() });
+        });
+
+        // Carregar Fiado
+        const fiadoSnap = await db.collection('fiado').get();
+        fiado = [];
+        fiadoSnap.forEach(doc => {
+            fiado.push({ firebaseId: doc.id, ...doc.data() });
+        });
+
+        // Carregar Posts
+        const postsSnap = await db.collection('posts').get();
+        posts = [];
+        postsSnap.forEach(doc => {
+            posts.push({ firebaseId: doc.id, ...doc.data() });
+        });
+
+        console.log("Todos os dados do Firebase foram sincronizados com sucesso!");
+
+    } catch (error) {
+        console.error("ERRO CRÍTICO ao sincronizar dados do Firebase:", error);
+        alert("Erro ao carregar dados do banco. Abra o console (F12) para detalhes.");
+    }
+}
 
         function fazerLogout() {
             sessionStorage.clear();
@@ -1216,7 +1223,6 @@
             atualizarGraficoDashboard();
         }
 
-        let config = { nome: 'Painel de Gestão Comercial', cor: '#4f46e5' };
         
         function carregarConfigVisual() {
             document.getElementById('tituloLoja').innerText = config.nome;
