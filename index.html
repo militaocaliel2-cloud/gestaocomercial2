@@ -1056,40 +1056,44 @@
         let usuarioAtualObjeto = null;
 
         async function carregarPainel(user) {
-            usuarioAtualObjeto = user;
-            document.getElementById('telaLogin').style.display = 'none';
-            checarStatusAcesso();
+    usuarioAtualObjeto = user;
+    document.getElementById('telaLogin').style.display = 'none';
+    checarStatusAcesso();
 
-            document.getElementById('nomeUsuario').innerText = `(${user.nome})`;
-            const badge = document.getElementById('labelUsuarioLogado');
-            badge.innerText = user.cargo.toUpperCase();
+    document.getElementById('nomeUsuario').innerText = `(${user.nome})`;
+    const badge = document.getElementById('labelUsuarioLogado');
+    badge.innerText = user.cargo.toUpperCase();
 
-            const tabEstoque = document.getElementById('tabBtnEstoque');
-            const tabCaixa = document.getElementById('tabBtnCaixa');
-            const tabDash = document.getElementById('tabBtnDashboard');
+    const tabEstoque = document.getElementById('tabBtnEstoque');
+    const tabCaixa = document.getElementById('tabBtnCaixa');
+    const tabDash = document.getElementById('tabBtnDashboard');
 
-            if (user.cargo === 'gerente') {
-                badge.className = 'user-badge-role badge-gerente';
-                if(tabEstoque) tabEstoque.style.display = 'block';
-                if(tabCaixa) tabCaixa.style.display = 'block';
-                if(tabDash) tabDash.style.display = 'block';
-            } else {
-                badge.className = 'user-badge-role badge-operador';
-                if(tabEstoque) tabEstoque.style.display = 'block';
-                if(document.getElementById('cardEstoqueForm')) document.getElementById('cardEstoqueForm').style.display = 'none';
-                if(tabCaixa) tabCaixa.style.display = 'none';
-                if(tabDash) tabDash.style.display = 'none';
-            }
+    if (user.cargo === 'gerente') {
+        badge.className = 'user-badge-role badge-gerente';
+        if(tabEstoque) tabEstoque.style.display = 'block';
+        if(tabCaixa) tabCaixa.style.display = 'block';
+        if(tabDash) tabDash.style.display = 'block';
+    } else {
+        badge.className = 'user-badge-role badge-operador';
+        if(tabEstoque) tabEstoque.style.display = 'block';
+        if(document.getElementById('cardEstoqueForm')) document.getElementById('cardEstoqueForm').style.display = 'none';
+        if(tabCaixa) tabCaixa.style.display = 'none';
+        if(tabDash) tabDash.style.display = 'none';
+    }
 
-            mostrarLoading(true);
-            await carregarDadosDoFirebase();
-            mostrarLoading(false);
-            
-            inicializarSistemaCompleto();
-        }
+    mostrarLoading(true);
+    await carregarDadosDoFirebase();
+    
+    // ATIVA O TEMPO REAL AQUI:
+    escutarEstoqueEmTempoReal(); 
+    
+    mostrarLoading(false);
+    
+    inicializarSistemaCompleto();
+}
 
         // CARREGA TODOS OS DADOS DO FIRESTORE EM TEMPO REAL / UNIFICADO
-        async function carregarDadosDoFirebase() {
+    async function carregarDadosDoFirebase() {
     try {
         console.log("Iniciando carregamento do Firebase...");
 
@@ -1105,7 +1109,6 @@
         estoqueSnap.forEach(doc => {
             estoque.push({ firebaseId: doc.id, ...doc.data() });
         });
-        console.log("Estoque carregado:", estoque.length);
 
         // Carregar Caixa
         const caixaSnap = await db.collection('caixa').get();
@@ -1439,6 +1442,19 @@
         });
 
         // ESTOQUE COM FIREBASE
+        function escutarEstoqueEmTempoReal() {
+    db.collection('estoque').onSnapshot((snapshot) => {
+        estoque = [];
+        snapshot.forEach(doc => {
+            estoque.push({ firebaseId: doc.id, ...doc.data() });
+        });
+        renderEstoque();
+        atualizarSelectProdutosPdv();
+    }, (error) => {
+        console.error("Erro no listener de estoque:", error);
+    });
+}
+
         async function addEstoque(e) {
             e.preventDefault();
             const custo = parseFloat(document.getElementById('estCusto').value);
