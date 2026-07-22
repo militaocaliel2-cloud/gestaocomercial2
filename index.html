@@ -1456,43 +1456,31 @@
 }
 
         async function addEstoque(e) {
-            e.preventDefault();
-            const custo = parseFloat(document.getElementById('estCusto').value);
-            const venda = parseFloat(document.getElementById('estVenda').value);
-            const qtd = parseInt(document.getElementById('estQtd').value);
-            const min = parseInt(document.getElementById('estMin').value);
+    e.preventDefault();
+    console.log("1. A função addEstoque foi disparada com sucesso!");
 
-            if (custo < 0 || venda < 0 || qtd < 0 || min < 0) {
-                alert('Os valores de preço, quantidade e mínimo não podem ser negativos.');
-                return;
-            }
+    try {
+        const codigo = document.getElementById('estCodBarra').value;
+        const nome = document.getElementById('estNome').value;
+        const custo = parseFloat(document.getElementById('estCusto').value);
+        const venda = parseFloat(document.getElementById('estVenda').value);
+        const qtd = parseInt(document.getElementById('estQtd').value);
+        const min = parseInt(document.getElementById('estMin').value);
 
-            mostrarLoading(true);
-            try {
-                const produto = {
-                    id: Date.now(),
-                    codBarra: document.getElementById('estCodBarra').value.trim() || String(Date.now()),
-                    nome: document.getElementById('estNome').value.trim(),
-                    custo: custo,
-                    venda: venda,
-                    qtd: qtd,
-                    min: min
-                };
+        const novoProduto = { codigo, nome, custo, venda, qtd, min };
+        console.log("2. Tentando enviar para o Firebase:", novoProduto);
 
-                const docRef = await db.collection('estoque').add(produto);
-                estoque.push({ firebaseId: docRef.id, ...produto });
-                
-                renderEstoque();
-                atualizarSelectProdutosPdv();
-                document.getElementById('formEstoque').reset();
-                alert('Produto cadastrado e sincronizado com sucesso!');
-            } catch (error) {
-                console.error("Erro ao cadastrar produto:", error);
-                alert("Erro ao salvar produto no Firebase.");
-            } finally {
-                mostrarLoading(false);
-            }
-        }
+        await db.collection('estoque').add(novoProduto);
+
+        console.log("3. Produto salvo com sucesso no Firebase!");
+        alert("Produto cadastrado com sucesso!");
+        
+        document.getElementById('formEstoque').reset();
+    } catch (error) {
+        console.error("ERRO na hora de salvar o produto:", error);
+        alert("Erro ao salvar produto. Veja o console (F12).");
+    }
+}
 
         async function removerEstoque(firebaseId, idLocal) {
             if (!confirm('Deseja realmente excluir este produto?')) return;
