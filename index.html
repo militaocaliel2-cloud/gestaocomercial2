@@ -1456,8 +1456,8 @@
 }
 
         async function addEstoque(e) {
-    e.preventDefault();
-    console.log("1. A função addEstoque foi disparada com sucesso!");
+    if (e) e.preventDefault();
+    console.log("1. Disparou o cadastro de estoque!");
 
     try {
         const codigo = document.getElementById('estCodBarra').value;
@@ -1467,18 +1467,23 @@
         const qtd = parseInt(document.getElementById('estQtd').value);
         const min = parseInt(document.getElementById('estMin').value);
 
+        if (!nome || isNaN(venda)) {
+            alert("Preencha os campos obrigatórios corretamente!");
+            return;
+        }
+
         const novoProduto = { codigo, nome, custo, venda, qtd, min };
-        console.log("2. Tentando enviar para o Firebase:", novoProduto);
+        console.log("2. Enviando para o Firebase...", novoProduto);
 
         await db.collection('estoque').add(novoProduto);
 
-        console.log("3. Produto salvo com sucesso no Firebase!");
+        console.log("3. Sucesso absoluto! Salvo no Firebase.");
         alert("Produto cadastrado com sucesso!");
         
         document.getElementById('formEstoque').reset();
     } catch (error) {
-        console.error("ERRO na hora de salvar o produto:", error);
-        alert("Erro ao salvar produto. Veja o console (F12).");
+        console.error("ERRO CRÍTICO AO SALVAR:", error);
+        alert("Erro ao salvar no banco. Veja o console (F12).");
     }
 }
 
@@ -2215,6 +2220,13 @@
             link.click();
             document.body.removeChild(link);
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+    const formEstoque = document.getElementById('formEstoque');
+    if (formEstoque) {
+        formEstoque.addEventListener('submit', addEstoque);
+    }
+});
     </script>
 </body>
 </html>
