@@ -626,7 +626,7 @@
                         <label>Qtd Mínima</label>
                         <input type="number" min="0" id="estMin" required placeholder="0">
                     </div>
-                    <button type="submit" class="btn">Cadastrar Produto</button>
+                    <button type="button" class="btn" onclick="forcarCadastroDireto()">Cadastrar Produto</button>
                 </form>
             </div>
 
@@ -2227,6 +2227,36 @@
         formEstoque.addEventListener('submit', addEstoque);
     }
 });
+
+async function forcarCadastroDireto() {
+    console.log("FORÇANDO O CLIQUE!");
+
+    const codigo = document.getElementById('estCodBarra').value;
+    const nome = document.getElementById('estNome').value;
+    const custo = parseFloat(document.getElementById('estCusto').value) || 0;
+    const venda = parseFloat(document.getElementById('estVenda').value) || 0;
+    const qtd = parseInt(document.getElementById('estQtd').value) || 0;
+    const min = parseInt(document.getElementById('estMin').value) || 0;
+
+    if (!nome) {
+        alert("Digite pelo menos o nome do produto!");
+        return;
+    }
+
+    try {
+        const novoProduto = { codigo, nome, custo, venda, qtd, min };
+        console.log("Tentando gravar no Firestore:", novoProduto);
+
+        await db.collection('estoque').add(novoProduto);
+
+        alert("DEU CERTO! Produto gravado no Firebase!");
+        console.log("Gravado com sucesso no Firebase!");
+    } catch (err) {
+        console.error("ERRO AO GRAVAR:", err);
+        alert("Erro ao gravar: " + err.message);
+    }
+}
+
     </script>
 </body>
 </html>
