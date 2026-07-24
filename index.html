@@ -987,6 +987,18 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // 🟢 ATIVANDO A RESILIÊNCIA OFFLINE AQUI:
+db.enablePersistence()
+  .catch((err) => {
+      if (err.code == 'failed-precondition') {
+          // Múltiplas abas abertas ao mesmo tempo podem causar isso
+          console.warn("Persistência offline falhou: Múltiplas abas abertas.");
+      } else if (err.code == 'unimplemented') {
+          // O navegador do usuário não suporta os recursos necessários
+          console.warn("O navegador não suporta persistência offline.");
+      }
+  });
+
         const SENHA_ADM = "123456";
         let meuGraficoFaturamento = null;
         let html5QrCode = null;
